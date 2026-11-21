@@ -26,6 +26,18 @@ the seed automatically (the seed is idempotent, so restarting is safe).
 
 ## 2. Try the main flow (about 3 minutes)
 
+After startup these batches are already there (centre Hyderabad, course `ELEC-101`). Signing in twice does not create them again.
+
+1. **Draft: ready to submit** — Anika submits it.
+2. **District: waiting for a second officer** — Dev has already approved. Meera or Kabir finishes the step. Dev sees that he already decided.
+3. **Quality: Neha's turn** — 55 candidates, approved by Dev and Meera.
+4. **State: Farah's turn** — 8 candidates. Approving it issues certificates.
+5. **Completed: certificates ready to check** — 6 certificates, already sent. The seed prints their numbers. Open one on `/verify`.
+6. **Stuck: waiting too long** — entered district review 3 days ago. Farah sees it under **Stuck**.
+7. **Sent back: fix and resend** — a reason and Dev's old approval. Anika fixes and resends; Dev must approve again (decision D4).
+
+You can also do the whole path by hand:
+
 1. **Anika** → *New batch* (`Electricians Nov`, course `ELEC-101`) → upload
    `docs/demo/candidates-60-with-bad-rows.csv`: 4 errors listed, nothing saved.
    Upload `docs/demo/candidates-60-valid.csv` → 60 saved → *Send for approval*.
