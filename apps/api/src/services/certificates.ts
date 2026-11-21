@@ -23,6 +23,7 @@ export async function issueCertificates(batchId: string, cfg: IssueConfig): Prom
   const batch = await prisma.batch.findUnique({ where: { id: batchId } });
   if (!batch || !["APPROVED", "ISSUING", "COMPLETED"].includes(batch.status)) return [];
 
+  // A 5,000-row batch can take longer than Prisma's 5-second default.
   await prisma.$transaction(async (tx) => {
     // Wait until any other worker finishes this batch. Inserting the same people
     // at the same time, in different orders, deadlocks on the unique indexes.
@@ -58,7 +59,7 @@ export async function issueCertificates(batchId: string, cfg: IssueConfig): Prom
       FROM "Certificate" x WHERE x."batchId" = ${batchId}
       ORDER BY x."id"
       ON CONFLICT ("certificateId") DO NOTHING`;
-  });
+  }, { timeout: 60_000 });
 
   const [candidates, certificates] = await Promise.all([
     prisma.candidate.count({ where: { batchId } }),

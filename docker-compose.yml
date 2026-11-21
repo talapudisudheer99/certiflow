@@ -60,6 +60,9 @@ services:
 
   worker:
     image: certiflow-api:local
+    # Same image as the api. Declaring the build stops Compose from trying to
+    # download certiflow-api from the internet before the local build exists.
+    build: ./apps/api
     env_file: .env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
