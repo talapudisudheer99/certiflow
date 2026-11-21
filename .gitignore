@@ -2,6 +2,7 @@ node_modules/
 dist/
 coverage/
 storage/
+apps/api/storage-test/
 *.log
 .DS_Store
 .env

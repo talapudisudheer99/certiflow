@@ -1,7 +1,7 @@
 import { api } from "@/lib/api";
 
 export type Role = "CENTRE" | "DISTRICT_OFFICER" | "QUALITY" | "STATE";
-export type Person = { id: string; name: string; role: Role; districtId: string | null };
+export type Person = { id: string; name: string; role: Role; districtId: string | null; centreId?: string | null };
 
 export const ROLE_LABEL: Record<Role, string> = {
   CENTRE: "Training centre",

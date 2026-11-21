@@ -2,7 +2,7 @@ import { Router, type NextFunction, type Request, type Response } from "express"
 import { z } from "zod";
 
 export type Role = "CENTRE" | "DISTRICT_OFFICER" | "QUALITY" | "STATE";
-export type Person = { id: string; name: string; role: Role; districtId: string | null };
+export type Person = { id: string; name: string; role: Role; districtId: string | null; centreId?: string | null };
 
 // Data access is injected so tests do not need a database.
 export interface UserStore {

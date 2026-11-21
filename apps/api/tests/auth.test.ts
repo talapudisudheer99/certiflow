@@ -3,7 +3,7 @@ import request from "supertest";
 import { createApp } from "../src/app";
 import type { Person, UserStore } from "../src/auth";
 
-const dev: Person = { id: "user-dev", name: "Dev", role: "DISTRICT_OFFICER", districtId: "district-north" };
+const dev: Person = { id: "user-dev", name: "Dev", role: "DISTRICT_OFFICER", districtId: "district-north", centreId: null };
 const users: UserStore = {
   listUsers: async () => [dev],
   findUser: async (id) => (id === dev.id ? dev : null),

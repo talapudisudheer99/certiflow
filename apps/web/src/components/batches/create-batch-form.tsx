@@ -10,8 +10,8 @@ import { api } from "@/lib/api";
 import { type CreateBatchInput, createBatchSchema } from "@/lib/validations/batch";
 
 // Adapted from the old signup form (same Field + Controller + Zod pattern).
-// US-3 will add the CSV file field; the POST /api/batches endpoint is not built yet.
-export function CreateBatchForm({ onCreated }: { onCreated?: () => void }) {
+// After creating, the batch page opens where the CSV is uploaded.
+export function CreateBatchForm({ onCreated }: { onCreated?: (id: string) => void }) {
   const form = useForm<CreateBatchInput>({
     resolver: zodResolver(createBatchSchema),
     defaultValues: { name: "", courseCode: "" },
@@ -20,9 +20,9 @@ export function CreateBatchForm({ onCreated }: { onCreated?: () => void }) {
 
   async function onSubmit(values: CreateBatchInput) {
     try {
-      await api("/batches", { method: "POST", body: JSON.stringify(values) });
+      const { batch } = await api<{ batch: { id: string } }>("/batches", { method: "POST", body: JSON.stringify(values) });
       form.reset();
-      onCreated?.();
+      onCreated?.(batch.id);
     } catch (e) {
       form.setError("root", { message: e instanceof Error ? e.message : "Could not create the batch" });
     }
@@ -30,7 +30,7 @@ export function CreateBatchForm({ onCreated }: { onCreated?: () => void }) {
 
   const fields = [
     { name: "name", label: "Batch name", placeholder: "Nov 2026 Tailoring batch A" },
-    { name: "courseCode", label: "Course code", placeholder: "PSM-101", description: "Capital letters, numbers and dashes." },
+    { name: "courseCode", label: "Course code", placeholder: "ELEC-101", description: "Capital letters, numbers and dashes." },
   ] as const;
 
   return (

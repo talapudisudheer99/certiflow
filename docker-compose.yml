@@ -42,6 +42,8 @@ services:
       REDIS_URL: redis://redis:6379
       WHATSAPP_URL: http://whatsapp-stub:4100
     command: sh -c "npx prisma migrate deploy && npx prisma db seed && node dist/server.js"
+    volumes:
+      - certificates:/app/storage
     ports:
       - "4000:4000"
     depends_on:
@@ -64,6 +66,9 @@ services:
       REDIS_URL: redis://redis:6379
       WHATSAPP_URL: http://whatsapp-stub:4100
     command: node dist/worker.js
+    volumes:
+      - certificates:/app/storage
+    # Scale out with: docker compose up --scale worker=3 (every job is idempotent)
     depends_on:
       api:
         condition: service_healthy
@@ -78,3 +83,4 @@ services:
 
 volumes:
   pgdata:
+  certificates:

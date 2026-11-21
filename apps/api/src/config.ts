@@ -12,6 +12,11 @@ const schema = z.object({
   SLA_DISTRICT_MINUTES: z.coerce.number().int().positive().default(2880),
   SLA_QUALITY_MINUTES: z.coerce.number().int().positive().default(2880),
   SLA_STATE_MINUTES: z.coerce.number().int().positive().default(1440),
+  // Where the worker writes certificate PDFs (a shared volume in Docker).
+  STORAGE_DIR: z.string().default("storage"),
+  // Base URL used in WhatsApp messages for the download and verify links.
+  PUBLIC_BASE_URL: z.string().url().default("http://localhost:8080"),
+  DELIVERY_MAX_ATTEMPTS: z.coerce.number().int().positive().default(8),
 });
 
 export type Config = z.infer<typeof schema>;
