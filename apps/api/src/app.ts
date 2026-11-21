@@ -10,6 +10,7 @@ import { prisma } from "./db";
 import { batchesRouter } from "./routes/batches";
 import { certificateHistoryRouter, publicRouter, stateRouter } from "./routes/certificates";
 import { eventsRouter } from "./routes/events";
+import { metricsRouter } from "./routes/metrics";
 
 // Dependencies are injected so tests can run the app without a real database or Redis.
 export interface Deps {
@@ -63,6 +64,7 @@ export function createApp(deps: Deps) {
     api.use("/batches", batchesRouter(deps.users, { qualityMinSize: f.qualityMinSize }));
     api.use("/", eventsRouter(deps.users, f.redisUrl));
     api.use("/state", stateRouter(certDeps));
+    api.use("/", metricsRouter(deps.users, f.redisUrl));
     api.use("/", certificateHistoryRouter(certDeps));
     api.use("/", publicRouter(certDeps));
   }

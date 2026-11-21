@@ -51,9 +51,11 @@ const eventsWorker = new Worker(
       traced.info({ toDeliver: ids.length }, "certificates issued");
       await queueDeliveries(ids, { requestId: job.data.requestId, batchId: job.data.batchId });
     } else if (job.name === "delivery.resend") {
+      const traced = log.child({ certificateId: job.data.certificateId, batchId: job.data.batchId });
+      traced.info("resend queued");
       // A finished job keeps its id for a while; remove it so the resend can be queued.
       await deliveries.remove(`deliver-${job.data.certificateId}`).catch(() => undefined);
-      await queueDeliveries([job.data.certificateId]);
+      await queueDeliveries([job.data.certificateId], { requestId: job.data.requestId, batchId: job.data.batchId });
     } else if (job.name === "escalate.check") {
       const ids = await escalateStuckBatches(sla);
       if (ids.length > 0) log.warn({ batchIds: ids }, "batches escalated");
@@ -78,10 +80,15 @@ const deliveryWorker = new Worker(
 
 deliveryWorker.on("failed", async (job, err) => {
   if (!job) return;
-  logger.warn({ jobId: job.id, attempt: job.attemptsMade, err: err.message }, "delivery attempt failed");
+  logger.warn(
+    { jobId: job.id, attempt: job.attemptsMade, batchId: job.data.batchId, certificateId: job.data.certificateId, err: err.message },
+    "delivery attempt failed",
+  );
   if (job.attemptsMade >= (job.opts.attempts ?? 1)) await markDeliveryFailed(job.data.certificateId, err.message);
 });
-eventsWorker.on("failed", (job, err) => logger.error({ jobId: job?.id, err }, "event job failed"));
+eventsWorker.on("failed", (job, err) =>
+  logger.error({ jobId: job?.id, batchId: job?.data?.batchId, certificateId: job?.data?.certificateId, err }, "event job failed"),
+);
 
 // Outbox relay: every second, move saved events onto the queue.
 const relayTimer = setInterval(() => {
