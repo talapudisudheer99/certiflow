@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useLiveEvents } from "@/hooks/use-live-events";
 import { usePoll } from "@/hooks/use-poll";
 import { getBatch, submitBatch, type BatchStatus } from "@/lib/batches";
 import type { Person, Role } from "@/lib/people";
@@ -22,7 +23,8 @@ const REVIEWER: Partial<Record<BatchStatus, { role: Role; label: string }>> = {
 };
 
 export function BatchDetail({ id, user, onBack }: { id: string; user: Person; onBack: () => void }) {
-  const { data, error, refresh } = usePoll(() => getBatch(id), 3000);
+  const { data, error, refresh } = usePoll(() => getBatch(id), 15000);
+  useLiveEvents(() => void refresh());
   const [submitting, setSubmitting] = useState(false);
 
   if (error && !data) return <p className="text-destructive">{error}</p>;

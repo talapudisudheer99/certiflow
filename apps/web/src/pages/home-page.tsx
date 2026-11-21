@@ -3,6 +3,7 @@ import { useState } from "react";
 import { BatchDetail } from "@/components/batches/batch-detail";
 import { BatchList } from "@/components/batches/batch-list";
 import { CreateBatchForm } from "@/components/batches/create-batch-form";
+import { useLiveEvents } from "@/hooks/use-live-events";
 import { usePoll } from "@/hooks/use-poll";
 import { listBatches, listStuck } from "@/lib/batches";
 import type { Person } from "@/lib/people";
@@ -10,9 +11,14 @@ import type { Person } from "@/lib/people";
 /** One screen per role: what is waiting for me, everything I can see, and (state office) what is stuck. */
 export function HomePage({ user }: { user: Person }) {
   const [openId, setOpenId] = useState<string | null>(null);
-  const all = usePoll(() => listBatches(false), 3000);
-  const waiting = usePoll(() => (user.role === "CENTRE" ? Promise.resolve({ batches: [] }) : listBatches(true)), 3000);
-  const stuck = usePoll(() => (user.role === "STATE" ? listStuck() : Promise.resolve({ batches: [] })), 5000);
+  const all = usePoll(() => listBatches(false), 15000);
+  const waiting = usePoll(() => (user.role === "CENTRE" ? Promise.resolve({ batches: [] }) : listBatches(true)), 15000);
+  const stuck = usePoll(() => (user.role === "STATE" ? listStuck() : Promise.resolve({ batches: [] })), 15000);
+  useLiveEvents(() => {
+    void all.refresh();
+    void waiting.refresh();
+    void stuck.refresh();
+  });
 
   if (openId) {
     return (

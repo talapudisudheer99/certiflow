@@ -4,6 +4,7 @@ import { audit } from "../lib/audit";
 import { badRequest, conflict, forbidden } from "../lib/http";
 import type { Person } from "../auth";
 import { APPROVALS_NEEDED, ROLE_FOR_STEP, canTransition, statusAfterStep, stepOf } from "../domain/workflow";
+import { publishBatchChange } from "../lib/events";
 import { getVisibleBatch, lockBatch } from "./batches";
 
 type Ctx = { user: Person; requestId?: string };
@@ -26,7 +27,7 @@ export async function reviewBatch(ctx: Ctx, batchId: string, input: ReviewInput,
   // Visibility first: an officer of another district gets 404, not a hint that it exists.
   await getVisibleBatch(ctx.user, batchId);
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const batch = await lockBatch(tx, batchId);
     const step = stepOf(batch.status);
 
@@ -93,6 +94,8 @@ export async function reviewBatch(ctx: Ctx, batchId: string, input: ReviewInput,
     const updated = await tx.batch.findUniqueOrThrow({ where: { id: batchId } });
     return { batch: updated, moved: true, alreadyDecided: false };
   });
+  void publishBatchChange(result.moved ? "batch.moved" : "batch.reviewed", batchId);
+  return result;
 }
 
 /**
@@ -104,7 +107,7 @@ export async function withdrawApproval(ctx: Ctx, batchId: string, reason: string
   if (text.length < 3) throw badRequest("A reason is required to withdraw an approval");
   await getVisibleBatch(ctx.user, batchId);
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const batch = await lockBatch(tx, batchId);
     const step = stepOf(batch.status);
     if (!step || ROLE_FOR_STEP[step] !== ctx.user.role) {
@@ -128,4 +131,6 @@ export async function withdrawApproval(ctx: Ctx, batchId: string, reason: string
     });
     return { batch, withdrawn: true };
   });
+  if (result.withdrawn) void publishBatchChange("batch.withdrawn", batchId);
+  return result;
 }

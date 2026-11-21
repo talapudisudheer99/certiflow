@@ -4,6 +4,7 @@ import type { Certificate } from "@prisma/client";
 import { prisma } from "../db";
 import { audit } from "../lib/audit";
 import { buildPdf } from "../lib/pdf";
+import { publishBatchChange } from "../lib/events";
 import { hmac, signDownload } from "../lib/signing";
 
 export type IssueConfig = { hmacSecret: string; storageDir: string; publicBaseUrl: string };
@@ -71,6 +72,7 @@ export async function issueCertificates(batchId: string, cfg: IssueConfig): Prom
       await audit(tx, { actor: null, action: "CERTIFICATE_ISSUED", entityType: "certificate", entityId: c.id, toState: "VALID" });
     }
   }, { timeout: 60_000 });
+  void publishBatchChange("batch.issuing", batchId);
 
   const [candidates, certificates] = await Promise.all([
     prisma.candidate.count({ where: { batchId } }),
@@ -86,6 +88,7 @@ export async function issueCertificates(batchId: string, cfg: IssueConfig): Prom
         });
       }
     });
+    void publishBatchChange("batch.completed", batchId);
   }
 
   const pending = await prisma.delivery.findMany({
@@ -151,6 +154,7 @@ export async function deliverCertificate(certificateId: string, cfg: IssueConfig
       });
       await audit(tx, { actor: null, action: "WHATSAPP_SENT", entityType: "certificate", entityId: cert.id, toState: "SENT" });
     });
+    void publishBatchChange("delivery.sent", cert.batchId);
     return "sent";
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -161,13 +165,14 @@ export async function deliverCertificate(certificateId: string, cfg: IssueConfig
         reason: message.slice(0, 200),
       });
     });
+    void publishBatchChange("delivery.failed", cert.batchId);
     throw err;
   }
 }
 
 /** Called when the queue gives up after the last retry: the state office sees it as FAILED. */
 export async function markDeliveryFailed(certificateId: string, error: string) {
-  await prisma.$transaction(async (tx) => {
+  const changed = await prisma.$transaction(async (tx) => {
     const r = await tx.delivery.updateMany({
       where: { certificateId, status: "PENDING" },
       data: { status: "FAILED", lastError: error.slice(0, 300) },
@@ -175,7 +180,12 @@ export async function markDeliveryFailed(certificateId: string, error: string) {
     if (r.count === 1) {
       await audit(tx, { actor: null, action: "WHATSAPP_FAILED", entityType: "certificate", entityId: certificateId, toState: "FAILED", reason: error.slice(0, 200) });
     }
+    return r.count === 1;
   });
+  if (changed) {
+    const cert = await prisma.certificate.findUnique({ where: { id: certificateId }, select: { batchId: true } });
+    if (cert) void publishBatchChange("delivery.failed", cert.batchId);
+  }
 }
 
 /** HTTP client for the WhatsApp stand-in, with a timeout shorter than the provider's hang. */

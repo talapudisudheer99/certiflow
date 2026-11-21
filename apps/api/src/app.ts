@@ -9,6 +9,7 @@ import { HttpError } from "./lib/http";
 import { prisma } from "./db";
 import { batchesRouter } from "./routes/batches";
 import { certificateHistoryRouter, publicRouter, stateRouter } from "./routes/certificates";
+import { eventsRouter } from "./routes/events";
 
 // Dependencies are injected so tests can run the app without a real database or Redis.
 export interface Deps {
@@ -20,6 +21,7 @@ export interface Deps {
   // Feature routes need the database. Left out in the unit tests for auth and health.
   features?: {
     redis: IORedis | null;
+    redisUrl: string;
     qualityMinSize: number;
     hmacSecret: string;
     publicBaseUrl: string;
@@ -59,6 +61,7 @@ export function createApp(deps: Deps) {
     const f = deps.features;
     const certDeps = { users: deps.users, redis: f.redis, hmacSecret: f.hmacSecret, publicBaseUrl: f.publicBaseUrl };
     api.use("/batches", batchesRouter(deps.users, { qualityMinSize: f.qualityMinSize }));
+    api.use("/", eventsRouter(deps.users, f.redisUrl));
     api.use("/state", stateRouter(certDeps));
     api.use("/", certificateHistoryRouter(certDeps));
     api.use("/", publicRouter(certDeps));

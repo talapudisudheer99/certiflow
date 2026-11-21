@@ -1,6 +1,7 @@
 import { prisma } from "../db";
 import { audit } from "../lib/audit";
 import { slaMinutes, stepOf } from "../domain/workflow";
+import { publishBatchChange } from "../lib/events";
 
 export type SlaConfig = { district: number; quality: number; state: number };
 
@@ -30,5 +31,6 @@ export async function escalateStuckBatches(sla: SlaConfig, now = new Date()) {
       }
     });
   }
+  for (const id of escalated) void publishBatchChange("batch.escalated", id);
   return escalated;
 }

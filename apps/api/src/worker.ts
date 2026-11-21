@@ -7,6 +7,7 @@ import { prisma } from "./db";
 import { relayOutbox } from "./services/outbox";
 import { deliverCertificate, httpSender, issueCertificates, markDeliveryFailed } from "./services/certificates";
 import { escalateStuckBatches } from "./services/escalation";
+import { bindEventRedis } from "./lib/events";
 
 /**
  * Background worker. Any number of copies can run: every job is idempotent, and a job that was
@@ -14,6 +15,8 @@ import { escalateStuckBatches } from "./services/escalation";
  */
 const config = loadConfig();
 const connection = createRedis(config.REDIS_URL);
+const live = createRedis(config.REDIS_URL);
+bindEventRedis(live);
 const events = new Queue(EVENTS_QUEUE, { connection });
 const deliveries = new Queue(DELIVERY_QUEUE, { connection });
 const issueCfg = { hmacSecret: config.CERT_HMAC_SECRET, storageDir: config.STORAGE_DIR, publicBaseUrl: config.PUBLIC_BASE_URL };
@@ -98,6 +101,7 @@ async function shutdown() {
   await Promise.all([events.close(), deliveries.close()]);
   await prisma.$disconnect();
   connection.disconnect();
+  live.disconnect();
   process.exit(0);
 }
 process.on("SIGTERM", shutdown);

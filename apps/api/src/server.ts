@@ -3,9 +3,11 @@ import { loadConfig } from "./config";
 import { prisma } from "./db";
 import { createCacheRedis, createRedis } from "./redis";
 import { logger } from "./logger";
+import { bindEventRedis } from "./lib/events";
 
 const config = loadConfig();
 const redis = createRedis(config.REDIS_URL);
+bindEventRedis(redis);
 // Separate client for the verify cache that fails fast instead of queueing when Redis is down,
 // so verification falls back to the database (US-9).
 const cache = createCacheRedis(config.REDIS_URL);
@@ -27,6 +29,7 @@ const app = createApp({
   },
   features: {
     redis: cache,
+    redisUrl: config.REDIS_URL,
     qualityMinSize: config.QUALITY_REVIEW_MIN_SIZE,
     hmacSecret: config.CERT_HMAC_SECRET,
     publicBaseUrl: config.PUBLIC_BASE_URL,

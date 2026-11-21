@@ -4,6 +4,7 @@ import { audit } from "../lib/audit";
 import { badRequest, forbidden, notFound } from "../lib/http";
 import { maskName } from "../lib/signing";
 import type { Person } from "../auth";
+import { publishBatchChange } from "../lib/events";
 
 export const CERT_NUMBER = /^PSM-\d{4}-\d{6}$/;
 const CACHE_TTL_SECONDS = 60;
@@ -82,5 +83,6 @@ export async function cancelCertificate(
   });
 
   if (redis) await safe(() => redis.del(cacheKey(cert.number)));
+  if (cert.status === "CANCELLED") void publishBatchChange("certificate.cancelled", cert.batchId);
   return cert;
 }

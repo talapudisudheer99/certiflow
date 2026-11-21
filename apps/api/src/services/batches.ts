@@ -4,6 +4,7 @@ import { audit } from "../lib/audit";
 import { badRequest, conflict, forbidden, notFound } from "../lib/http";
 import type { Person } from "../auth";
 import { validateCandidates } from "../domain/csv";
+import { publishBatchChange } from "../lib/events";
 
 type Ctx = { user: Person; requestId?: string };
 
@@ -96,7 +97,7 @@ export async function uploadCandidates(ctx: Ctx, batchId: string, csv: string) {
 export async function submitBatch(ctx: Ctx, batchId: string) {
   await getVisibleBatch(ctx.user, batchId);
   if (ctx.user.role !== "CENTRE") throw forbidden("Only the training centre can submit its batch");
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const batch = await lockBatch(tx, batchId);
     if (batch.status === "DISTRICT_REVIEW") return { batch, changed: false };
     if (batch.status !== "DRAFT" && batch.status !== "RETURNED") {
@@ -122,4 +123,6 @@ export async function submitBatch(ctx: Ctx, batchId: string) {
     });
     return { batch: updated, changed: true };
   });
+  if (result.changed) void publishBatchChange("batch.submitted", batchId);
+  return result;
 }
