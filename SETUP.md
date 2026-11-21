@@ -75,6 +75,16 @@ npm run dev:worker     # in a second terminal
 cd ../web && npm run dev   # web on http://localhost:5173
 ```
 
+### Clean start (for recording a demo)
+By default the database is filled with sample batches at every step, so reviewers can try each flow at once.
+To start with only the six people and no batches:
+```bash
+# in .env
+DEMO_SAMPLE_BATCHES=false
+docker compose down -v && docker compose up --build -d
+```
+Set it back to `true` (or remove the line) and run the same command to get the sample data again.
+
 ## Troubleshooting
 - `Cannot connect to the Docker daemon`: start Docker Desktop first.
 - Port 5433/6379/8080 already in use: stop the other service or change the port in `docker-compose.yml`.

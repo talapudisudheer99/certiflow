@@ -12,7 +12,12 @@ export const DEMO_PEOPLE = [
   { id: "user-farah", name: "Farah", role: "STATE" },
 ] as const;
 
-export async function seedDemo(prisma: PrismaClient) {
+/**
+ * Seeds the six demo people (always) and, unless turned off, sample batches at every step so a
+ * reviewer can try every flow straight away. Set DEMO_SAMPLE_BATCHES=false for a clean start.
+ */
+export async function seedDemo(prisma: PrismaClient, options: { sampleBatches?: boolean } = {}) {
+  const { sampleBatches = true } = options;
   await prisma.district.upsert({ where: { id: "district-north" }, update: {}, create: { id: "district-north", name: "North District" } });
   await prisma.district.upsert({ where: { id: "district-south" }, update: {}, create: { id: "district-south", name: "South District" } });
   await prisma.centre.upsert({
@@ -22,6 +27,11 @@ export async function seedDemo(prisma: PrismaClient) {
   });
   for (const p of DEMO_PEOPLE) {
     await prisma.user.upsert({ where: { id: p.id }, update: {}, create: { ...p } });
+  }
+
+  if (!sampleBatches) {
+    logger.info("Sample batches skipped (DEMO_SAMPLE_BATCHES=false): only the six demo people were created");
+    return;
   }
 
   // One small sample batch already waiting for the district officers.
