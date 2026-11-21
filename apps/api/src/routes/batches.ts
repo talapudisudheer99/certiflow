@@ -44,19 +44,20 @@ export function batchesRouter(users: UserStore, opts: { qualityMinSize: number }
       include: {
         centre: { select: { name: true } },
         _count: { select: { candidates: true, certificates: true } },
-        approvals: { select: { decision: true, cycle: true, step: true } },
+        approvals: { select: { decision: true, cycle: true, step: true, officerId: true } },
       },
       take: 200,
     });
-    res.json({
-      batches: batches.map((batch) => {
-        const step = stepOf(batch.status);
-        const rows = step ? batch.approvals.filter((a) => a.step === step && a.cycle === batch.cycle) : [];
-        const approvalsThisStep = rows.filter((a) => a.decision === "APPROVE").length - rows.filter((a) => a.decision === "WITHDRAW").length;
-        const { approvals: _approvals, ...rest } = batch;
-        return { ...rest, approvalsThisStep: Math.max(0, approvalsThisStep) };
-      }),
+    const shaped = batches.map((batch) => {
+      const step = stepOf(batch.status);
+      const rows = step ? batch.approvals.filter((a) => a.step === step && a.cycle === batch.cycle) : [];
+      const approvalsThisStep = rows.filter((a) => a.decision === "APPROVE").length - rows.filter((a) => a.decision === "WITHDRAW").length;
+      // Has this person already decided at the current step and cycle? Then it is not "waiting for them".
+      const iDecided = rows.some((a) => a.officerId === user.id);
+      const { approvals: _approvals, ...rest } = batch;
+      return { ...rest, approvalsThisStep: Math.max(0, approvalsThisStep), iDecided };
     });
+    res.json({ batches: waitingStatus ? shaped.filter((b) => !b.iDecided) : shaped });
   }));
 
   router.post("/", route(async (req, res) => {

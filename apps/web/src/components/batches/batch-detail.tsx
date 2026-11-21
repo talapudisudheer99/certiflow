@@ -25,7 +25,7 @@ const REVIEWER: Partial<Record<BatchStatus, { role: Role; label: string }>> = {
 
 export function BatchDetail({ id, user, onBack }: { id: string; user: Person; onBack: () => void }) {
   const { data, error, refresh } = usePoll(() => getBatch(id), 15000);
-  useLiveEvents(() => void refresh());
+  useLiveEvents(() => void refresh(), { batchId: id });
   const [submitting, setSubmitting] = useState(false);
 
   if (error && !data) return <p className="text-destructive">{error}</p>;
@@ -98,8 +98,10 @@ export function BatchDetail({ id, user, onBack }: { id: string; user: Person; on
         <ReviewActions
           batchId={id}
           stepLabel={reviewer.label}
-          canWithdraw={currentApprovals.some((a) => a.decision === "APPROVE" && a.officerId === user.id)
-            && !currentApprovals.some((a) => a.decision === "WITHDRAW" && a.officerId === user.id)}
+          mine={{
+            approvedAt: currentApprovals.find((a) => a.decision === "APPROVE" && a.officerId === user.id)?.createdAt ?? null,
+            withdrawn: currentApprovals.some((a) => a.decision === "WITHDRAW" && a.officerId === user.id),
+          }}
           onDone={() => void refresh()}
         />
       )}

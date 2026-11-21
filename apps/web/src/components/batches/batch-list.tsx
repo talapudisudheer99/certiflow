@@ -26,7 +26,10 @@ const NEEDS_ACTION: Record<Role, BatchStatus[]> = {
 
 function nextStep(batch: BatchSummary, role: Role): string {
   const mine = NEEDS_ACTION[role];
-  if (role !== "CENTRE" && mine.includes(batch.status)) return "Your turn";
+  if (role !== "CENTRE" && mine.includes(batch.status)) {
+    if (batch.iDecided) return `You approved · waiting for another officer (${batch.approvalsThisStep ?? 1} of 2)`;
+    return "Your turn";
+  }
   switch (batch.status) {
     case "DRAFT":
       return "Upload and send";
@@ -50,11 +53,12 @@ function nextStep(batch: BatchSummary, role: Role): string {
 
 function actionFirst(batches: BatchSummary[], role: Role) {
   const order = NEEDS_ACTION[role];
-  const rank = (status: BatchStatus) => {
-    const i = order.indexOf(status);
+  const rank = (batch: BatchSummary) => {
+    if (batch.iDecided) return order.length; // already decided: not an action for this person
+    const i = order.indexOf(batch.status);
     return i === -1 ? order.length : i;
   };
-  return [...batches].sort((a, b) => rank(a.status) - rank(b.status));
+  return [...batches].sort((a, b) => rank(a) - rank(b));
 }
 
 export function BatchList({ title, description, batches, error, emptyText, role, onOpen }: Props) {

@@ -6,8 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea";
 import { reviewBatch, withdrawApproval, type Decision } from "@/lib/batches";
 
-/** Approve, send back or reject. The server decides if this person may act; buttons are only a convenience. */
-export function ReviewActions({ batchId, stepLabel, canWithdraw, onDone }: { batchId: string; stepLabel: string; canWithdraw: boolean; onDone: () => void }) {
+export type MyDecision = { approvedAt: string | null; withdrawn: boolean };
+
+/**
+ * Approve, send back or reject. The server decides if this person may act; buttons are only a convenience.
+ * Once you approved at this step, only "Withdraw my approval" is offered (the server ignores a second decision).
+ */
+export function ReviewActions({ batchId, stepLabel, mine, onDone }: { batchId: string; stepLabel: string; mine: MyDecision; onDone: () => void }) {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState<Decision | null>(null);
 
@@ -50,11 +55,42 @@ export function ReviewActions({ batchId, stepLabel, canWithdraw, onDone }: { bat
     }
   }
 
+  if (mine.approvedAt && mine.withdrawn) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Your decision ({stepLabel})</CardTitle>
+          <CardDescription>You approved, then withdrew your approval. Another officer must decide this step.</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  if (mine.approvedAt) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>You approved this batch</CardTitle>
+          <CardDescription>
+            Approved on {new Date(mine.approvedAt).toLocaleString()}. Waiting for another officer. Made a mistake? Withdraw
+            your approval while the batch is still at this step (a reason is required).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Textarea placeholder="Reason for withdrawing (for example: I missed a duplicate name)" value={reason} onChange={(e) => setReason(e.target.value)} />
+          <Button variant="outline" disabled={busy !== null} onClick={() => void withdraw()}>
+            {busy === "WITHDRAW" ? "Withdrawing..." : "Withdraw my approval"}
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Your decision ({stepLabel})</CardTitle>
-        <CardDescription>A reason is required to send back or reject.</CardDescription>
+        <CardDescription>Check the candidates below. A reason is required to send back or reject.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <Textarea placeholder="Reason (for example: row 4 has the wrong date of birth)" value={reason} onChange={(e) => setReason(e.target.value)} />
@@ -62,11 +98,6 @@ export function ReviewActions({ batchId, stepLabel, canWithdraw, onDone }: { bat
           <Button disabled={busy !== null} onClick={() => void act("APPROVE")}>{busy === "APPROVE" ? "Approving..." : "Approve"}</Button>
           <Button variant="outline" disabled={busy !== null} onClick={() => void act("SEND_BACK")}>Send back</Button>
           <Button variant="destructive" disabled={busy !== null} onClick={() => void act("REJECT")}>Reject</Button>
-          {canWithdraw && (
-            <Button variant="outline" disabled={busy !== null} onClick={() => void withdraw()}>
-              {busy === "WITHDRAW" ? "Withdrawing..." : "Withdraw my approval"}
-            </Button>
-          )}
         </div>
       </CardContent>
     </Card>

@@ -111,4 +111,12 @@ describe("HTTP never-rules", () => {
     const wrongId = await request(app()).get(`/api/certificates/${certs[1].id}/pdf?exp=${link.exp}&sig=${link.sig}`);
     expect(wrongId.status).toBe(403);
   });
+  it("a batch you already approved is not in your queue, but is in the other officers' queue", async () => {
+    // Seed: Dev has approved batch-flow-district; it waits for Meera or Kabir.
+    const dev = await request(app()).get("/api/batches?waiting=1").set("Cookie", await cookie("user-dev"));
+    const meera = await request(app()).get("/api/batches?waiting=1").set("Cookie", await cookie("user-meera"));
+    const ids = (r: request.Response) => (r.body.batches as { id: string }[]).map((b) => b.id);
+    expect(ids(dev)).not.toContain("batch-flow-district");
+    expect(ids(meera)).toContain("batch-flow-district");
+  });
 });
