@@ -2,7 +2,7 @@
 
 Source: Algohire hackathon problem statement, 21 Nov 2026. Deadline 2:30 pm (final).
 Stories are in priority order. **Tier A = must work and be tested. Tier B = do if time remains. Tier C = write it down (README / DEPLOYMENT.md), do not build.**
-Status: To do / In progress / Done
+Status: Done / Partly / Not built
 
 ## Scope and decisions (where the brief was unclear)
 
@@ -20,7 +20,7 @@ These go to the top of the README as the "requirements note". Change a decision 
 | D8 | Who can cancel a certificate | State office only, with a reason. The record stays, its status becomes `CANCELLED`, and verification says so immediately. | Never delete: the audit trail must survive. |
 | D9 | Login | No passwords. The demo has a **person switcher** (Anika, Dev, Meera, Kabir, Neha, Farah). The server issues a signed session cookie and checks role, district and batch step on every request. | The brief asks reviewers to switch people. Real login is out of scope. |
 | D10 | WhatsApp | A separate stand-in provider service that can succeed, fail, time out and send duplicates. We retry with backoff and use an idempotency key. | Real WhatsApp is unreliable, so correctness must not depend on it. |
-| D11 | "See changes without refreshing" | Server-Sent Events from the API, fed by Redis pub/sub. | Simpler than WebSockets, one-way is enough. |
+| D11 | "See changes without refreshing" | Server-Sent Events from the API, fed by Redis pub/sub. Screens also poll every 15 seconds if a message is missed. | Simpler than WebSockets, one-way is enough. |
 
 ## Stack (fixed by the brief)
 React + Vite (web), Node.js + Express + TypeScript (api and worker), PostgreSQL with Prisma (migrations), Redis (cache, pub/sub), BullMQ on Redis (jobs and events), Docker Compose (one command).
@@ -39,7 +39,7 @@ Edge cases:
 
 DB changes: tables, columns, constraints
 
-Status: To do
+Status: Done / Partly / Not built
 ```
 
 ---
@@ -61,7 +61,7 @@ Edge cases:
 
 DB changes: Prisma migration folder, `seed.ts`.
 
-Status: To do
+Status: Done
 
 ## US-2: Demo people and role-based access
 As a reviewer, I want to switch between Anika, Dev, Meera, Kabir, Neha and Farah, so that I can try every flow, and as the programme office I want the server to stop anyone acting out of turn.
@@ -79,7 +79,7 @@ Edge cases:
 
 DB changes: `users` (id, name, role, district_id, centre_id), `districts`, `centres`.
 
-Status: To do
+Status: Done
 
 ## US-3: Centre uploads candidates from a spreadsheet (all or nothing)
 As a training centre, I want to upload my CSV of passed candidates, so that I do not retype them, and I want to see exactly which rows are wrong.
@@ -98,7 +98,7 @@ Edge cases:
 
 DB changes: `batches` (id, centre_id, status, version, ...), `candidates` (id, batch_id, full_name, phone, course_code, score, unique (phone, course_code)).
 
-Status: To do
+Status: Done
 
 ## US-4: Workflow with clear states
 As a centre, I want to send the batch for approval and see where it is, so that I know what to do next.
@@ -115,7 +115,7 @@ Edge cases:
 
 DB changes: `batches.status`, `batches.version` (for optimistic locking), `batches.step_entered_at`.
 
-Status: To do
+Status: Done
 
 ## US-5: District review with two officers (and safe concurrency)
 As a district officer, I want to see what is waiting for me and approve, reject or send back with a reason, and as the programme office I want a batch to move forward once even if two officers click at the same moment.
@@ -133,7 +133,7 @@ Edge cases:
 
 DB changes: `approvals` (id, batch_id, step, officer_id, decision, reason, created_at, cycle, unique (batch_id, step, officer_id, cycle)).
 
-Status: To do
+Status: Done
 
 ## US-6: State office final decision, stuck list and cancel
 As the state office, I want to give the final approval, see what is stuck, and cancel a certificate that should never have been issued.
@@ -150,7 +150,7 @@ Edge cases:
 
 DB changes: `certificates.status`, `certificates.cancelled_at`, `certificates.cancel_reason`, `certificates.cancelled_by`.
 
-Status: To do
+Status: Done
 
 ## US-7: Exactly one certificate per candidate after approval
 As a candidate, I want exactly one certificate, and as the programme office I want no duplicates and no shared numbers even if workers crash and retry.
@@ -169,7 +169,7 @@ Edge cases:
 
 DB changes: `certificates` (id, number unique, candidate_id unique, batch_id, status, issued_at, pdf_path, hash), `outbox` (id, type, payload, created_at, published_at).
 
-Status: To do
+Status: Done
 
 ## US-8: WhatsApp delivery through an unreliable stand-in provider
 As a candidate, I want my certificate on WhatsApp, and as the programme office I want delivery to survive failures and timeouts without duplicates.
@@ -187,7 +187,7 @@ Edge cases:
 
 DB changes: `deliveries` (id, certificate_id unique, status, attempts, last_error, next_attempt_at).
 
-Status: To do
+Status: Done
 
 ## US-9: Anyone can verify a certificate (no login)
 As an employer, I want to check a certificate in seconds, and as the programme office I want a cancelled certificate to never look genuine.
@@ -206,7 +206,7 @@ Edge cases:
 
 DB changes: none (index on `certificates.number`).
 
-Status: To do
+Status: Done
 
 ## US-10: Every decision is traceable
 As the programme office, I want to know who decided what and when, for any batch or certificate.
@@ -221,7 +221,7 @@ Edge cases:
 
 DB changes: `audit_log`.
 
-Status: To do
+Status: Done
 
 ## US-11: Stuck batches are escalated automatically
 As a senior officer, I want to learn about a batch waiting too long without anyone chasing it.
@@ -237,7 +237,7 @@ Edge cases:
 
 DB changes: `batches.escalated_at`.
 
-Status: To do
+Status: Done
 
 ## US-12: Send back, fix and resend
 As a centre, I want to fix a batch that was sent back and resend it, with the decision about earlier approvals clear.
@@ -253,7 +253,7 @@ Edge cases:
 
 DB changes: `batches.cycle`.
 
-Status: To do
+Status: Done
 
 ---
 
@@ -268,7 +268,7 @@ Acceptance criteria:
 
 Edge cases: connection drops, the browser reconnects and refetches.
 
-Status: To do
+Status: Done
 
 ## US-14: Candidate download and history view
 As a candidate (or centre), I want to download the PDF, and as an officer I want to see a batch's history.
@@ -277,7 +277,7 @@ Acceptance criteria:
 - Download uses a short-lived signed link. A stranger cannot fetch someone else's PDF by guessing an id.
 - A history page shows the audit log for a batch or a certificate.
 
-Status: To do
+Status: Done
 
 ## US-15: Basic observability
 As an operator, I want to trace what happened and see health.
@@ -286,7 +286,7 @@ Acceptance criteria:
 - Structured JSON logs with request id, batch id and certificate id.
 - `/health` and a simple `/metrics` (queue depth, failed deliveries, stuck batches).
 
-Status: To do
+Status: Done
 
 ---
 

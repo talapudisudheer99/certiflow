@@ -18,9 +18,8 @@ with retries and an idempotency key; public verification with Redis cache and ra
 that is visible immediately; automatic escalation of stuck batches; append-only audit log; screens for
 every role. **All six "moments" and the five "never" rules have automated tests.**
 
-**Not built / limits:** live updates use 3-second polling, not Server-Sent Events (next step, see
-below); no real WhatsApp or object storage; the verify rate limiter is in-memory per API instance.
-Full list under *Known limits*.
+**Not built / limits:** no real WhatsApp or object storage; the verify rate limiter is in memory per
+API instance; phone numbers are not proven to belong to the candidate. Full list under *Known limits*.
 
 ### Decisions where the brief was unclear
 
@@ -102,7 +101,8 @@ Worker ── outbox relay (SKIP LOCKED) ──► BullMQ "certiflow-events"  �
 
 ## Known limits and next steps
 
-- **Live updates are polling (3 s).** Next: SSE endpoint fed by Redis pub/sub, scoped per user.
+- Live updates use Server-Sent Events, with a 15-second refresh if a message is missed.
+- Phone numbers are checked for format and duplicates, but not proven to belong to the candidate. If a centre enters a wrong number, the WhatsApp goes to the wrong person. Next step: OTP confirmation of each candidate's phone at enrolment, and a re-issue flow (cancel + issue to the corrected number).
 - Verify rate limit is in memory per API instance; with several instances use a Redis store.
 - PDFs are on a shared Docker volume; production uses S3 with pre-signed URLs (see DEPLOYMENT.md).
 - No email/SMS fallback when WhatsApp fails permanently; the state office resends by hand.
