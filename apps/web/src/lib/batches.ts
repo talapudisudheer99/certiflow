@@ -10,7 +10,7 @@ export type BatchSummary = {
   centre: { name: string }; _count: { candidates: number; certificates: number };
 };
 export type Candidate = { id: string; fullName: string; phone: string; dateOfBirth: string; courseCode: string; score: number };
-export type Approval = { id: string; step: string; decision: Decision; reason: string | null; cycle: number; createdAt: string; officer: { name: string } };
+export type Approval = { id: string; step: string; decision: Decision; reason: string | null; cycle: number; createdAt: string; officerId: string; officer: { name: string } };
 export type Certificate = {
   id: string; number: string; holderName: string; status: "VALID" | "CANCELLED"; issuedAt: string; cancelReason: string | null;
   delivery: { status: "PENDING" | "SENT" | "FAILED"; attempts: number; lastError: string | null } | null;

@@ -10,6 +10,7 @@ export function HistoryList({ history }: { history: AuditEntry[] }) {
         <CardDescription>Append-only: entries can never be edited or deleted.</CardDescription>
       </CardHeader>
       <CardContent>
+        {history.length === 0 && <p className="text-sm text-muted-foreground">Nothing has happened on this batch yet.</p>}
         <ol className="space-y-2 text-sm">
           {history.map((h) => (
             <li key={h.id} className="flex flex-wrap gap-x-2 border-b pb-2 last:border-0">

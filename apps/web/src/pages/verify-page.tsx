@@ -1,5 +1,5 @@
 import { BadgeCheckIcon, SearchIcon, ShieldAlertIcon, ShieldXIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,11 +18,13 @@ export function VerifyPage({ initialNumber }: { initialNumber: string }) {
   const [busy, setBusy] = useState(false);
 
   async function check(n = number) {
+    const trimmed = n.trim().toUpperCase();
+    if (!trimmed) return;
     setBusy(true);
     setError(null);
     try {
-      setResult(await api<Result>(`/verify/${encodeURIComponent(n.trim().toUpperCase())}`));
-      window.history.replaceState(null, "", `/verify/${n.trim().toUpperCase()}`);
+      setResult(await api<Result>(`/verify/${encodeURIComponent(trimmed)}`));
+      window.history.replaceState(null, "", `/verify/${trimmed}`);
     } catch (e) {
       setResult(null);
       setError(e instanceof Error ? e.message : "Could not check");
@@ -30,6 +32,13 @@ export function VerifyPage({ initialNumber }: { initialNumber: string }) {
       setBusy(false);
     }
   }
+
+  // A link like /verify/PSM-2026-000123 should show the result straight away.
+  useEffect(() => {
+    if (initialNumber.trim()) void check(initialNumber);
+    // Only when the page opens with a number in the address.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialNumber]);
 
   return (
     <main className="mx-auto flex min-h-svh max-w-lg flex-col justify-center gap-6 p-4">
@@ -46,6 +55,7 @@ export function VerifyPage({ initialNumber }: { initialNumber: string }) {
             <Input value={number} onChange={(e) => setNumber(e.target.value)} placeholder="PSM-2026-000123" aria-label="Certificate number" />
             <Button type="submit" disabled={busy || !number.trim()}><SearchIcon /> Check</Button>
           </form>
+          {busy && !result && <p className="mt-3 text-sm text-muted-foreground">Checking this number...</p>}
           {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
         </CardContent>
       </Card>

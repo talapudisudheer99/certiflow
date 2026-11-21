@@ -70,6 +70,10 @@ export function BatchDetail({ id, user, onBack }: { id: string; user: Person; on
           {currentApprovals.length > 0 && (
             <p className="text-sm text-muted-foreground">
               At this step: {currentApprovals.map((a) => `${a.officer.name} (${a.decision.toLowerCase()})`).join(", ")}
+              {reviewer &&
+                currentApprovals.some((a) => a.decision === "APPROVE" && a.officerId === user.id) &&
+                currentApprovals.filter((a) => a.decision === "APPROVE").length < (batch.status === "DISTRICT_REVIEW" ? 2 : 1) &&
+                " — waiting for another officer"}
             </p>
           )}
           {editable && (
