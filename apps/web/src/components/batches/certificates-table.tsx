@@ -133,6 +133,11 @@ export function CertificatesTable({ certificates, canManage, onChange }: { certi
                   <a className="text-primary underline-offset-4 hover:underline" href={`/verify/${c.number}`} target="_blank" rel="noreferrer" title="Open the public check">
                     {c.number}
                   </a>
+                  {c.downloadUrl && (
+                    <a className="ml-2 text-muted-foreground underline-offset-4 hover:underline" href={c.downloadUrl} target="_blank" rel="noreferrer" title="Download the certificate PDF (same signed link as on WhatsApp)">
+                      PDF
+                    </a>
+                  )}
                 </TableCell>
                 <TableCell>{c.holderName}</TableCell>
                 <TableCell>

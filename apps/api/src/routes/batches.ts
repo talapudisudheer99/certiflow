@@ -7,6 +7,7 @@ import { batchVisibilityFilter, createBatch, getVisibleBatch, submitBatch, uploa
 import { reviewBatch, withdrawApproval } from "../services/review";
 import { ROLE_FOR_STEP, stepOf } from "../domain/workflow";
 import type { BatchStatus } from "@prisma/client";
+import { signDownload } from "../lib/signing";
 
 const createSchema = z.object({
   name: z.string().trim().min(3, "Batch name needs at least 3 characters").max(100),
@@ -30,7 +31,7 @@ function parse<T>(schema: z.ZodType<T>, body: unknown): T {
   return r.data;
 }
 
-export function batchesRouter(users: UserStore, opts: { qualityMinSize: number }) {
+export function batchesRouter(users: UserStore, opts: { qualityMinSize: number; hmacSecret?: string }) {
   const router = Router();
   router.use(requireUser(users));
 
@@ -76,7 +77,13 @@ export function batchesRouter(users: UserStore, opts: { qualityMinSize: number }
       prisma.auditLog.findMany({ where: { entityType: "batch", entityId: batch.id }, orderBy: { createdAt: "asc" } }),
       prisma.centre.findUnique({ where: { id: batch.centreId } }),
     ]);
-    res.json({ batch: { ...batch, centreName: centre?.name }, candidates, approvals, certificates, history, myStepRole: ROLE_FOR_STEP });
+    // Same signed, expiring PDF link the candidate gets on WhatsApp, so staff can open it too.
+    const withLinks = certificates.map((c) => {
+      if (!opts.hmacSecret || c.status !== "VALID") return { ...c, downloadUrl: null };
+      const { exp, sig } = signDownload(opts.hmacSecret, c.id);
+      return { ...c, downloadUrl: `/api/certificates/${c.id}/pdf?exp=${exp}&sig=${sig}` };
+    });
+    res.json({ batch: { ...batch, centreName: centre?.name }, candidates, approvals, certificates: withLinks, history, myStepRole: ROLE_FOR_STEP });
   }));
 
   router.post("/:id/candidates", route(async (req, res) => {

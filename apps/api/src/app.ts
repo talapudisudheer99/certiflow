@@ -61,7 +61,7 @@ export function createApp(deps: Deps) {
   if (deps.features) {
     const f = deps.features;
     const certDeps = { users: deps.users, redis: f.redis, hmacSecret: f.hmacSecret, publicBaseUrl: f.publicBaseUrl };
-    api.use("/batches", batchesRouter(deps.users, { qualityMinSize: f.qualityMinSize }));
+    api.use("/batches", batchesRouter(deps.users, { qualityMinSize: f.qualityMinSize, hmacSecret: f.hmacSecret }));
     api.use("/", eventsRouter(deps.users, f.redisUrl));
     api.use("/state", stateRouter(certDeps));
     api.use("/", metricsRouter(deps.users, f.redisUrl));

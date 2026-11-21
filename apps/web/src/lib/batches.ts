@@ -14,7 +14,7 @@ export type BatchSummary = {
 export type Candidate = { id: string; fullName: string; phone: string; dateOfBirth: string; courseCode: string; score: number };
 export type Approval = { id: string; step: string; decision: Decision; reason: string | null; cycle: number; createdAt: string; officerId: string; officer: { name: string } };
 export type Certificate = {
-  id: string; number: string; holderName: string; status: "VALID" | "CANCELLED"; issuedAt: string; cancelReason: string | null;
+  id: string; number: string; holderName: string; status: "VALID" | "CANCELLED"; issuedAt: string; cancelReason: string | null; downloadUrl?: string | null;
   delivery: { status: "PENDING" | "SENT" | "FAILED"; attempts: number; lastError: string | null } | null;
 };
 export type AuditEntry = { id: string; createdAt: string; actorName: string | null; action: string; fromState: string | null; toState: string | null; reason: string | null };
