@@ -50,18 +50,33 @@ docker compose up --build
 
 Tests and the non-Docker setup: see **SETUP.md**. Demo CSVs: `docs/demo/`.
 
+## Try it in 3 minutes
+
+Open http://localhost:8080 and sign in as the person named below. These seven batches are already loaded (Hyderabad, course `ELEC-101`).
+
+1. **Draft: ready to submit** — sign in as **Anika** and send it for approval.
+2. **District: waiting for a second officer** — **Dev** has approved. Sign in as **Meera** or **Kabir** to finish the step.
+3. **Quality: Neha's turn** — sign in as **Neha** (55 candidates, so quality review applies).
+4. **State: Farah's turn** — sign in as **Farah**. Approving issues the certificates.
+5. **Completed: certificates ready to check** — six certificates, already sent. The startup log prints their numbers. Open one at `/verify`.
+6. **Stuck: waiting too long** — sign in as **Farah** and open **Stuck**.
+7. **Sent back: fix and resend** — sign in as **Anika**, fix it, and resend. **Dev** must approve again.
+
 ## How it is put together
 
 ```
-React (Vite) ──/api──► Express API ──► PostgreSQL (Prisma)   ◄── source of truth: transactions + unique constraints
-                          │   │            ▲
-                          │   └─ Redis ────┼── verify cache (deleted on cancel)
-                          │                │
-                          └─ writes OutboxEvent in the SAME transaction as the state change
-                                           │
+Browser ──/api──► Express API ──► PostgreSQL (Prisma)   ◄── source of truth: transactions + unique constraints
+   ▲                 │   │
+   │                 │   ├─ Redis cache ── verify lookups (key deleted on cancel)
+   │                 │   │
+   │                 │   └─ Redis pub/sub "certiflow:events" ──► GET /api/events (SSE) ──► browser
+   │                 │
+   │                 └─ writes OutboxEvent in the SAME transaction as the state change
+   │                                  │
 Worker ── outbox relay (SKIP LOCKED) ──► BullMQ "certiflow-events"  ──► issue certificates (idempotent)
        └──────────────────────────────► BullMQ "certiflow-delivery" ──► PDF + WhatsApp stand-in (retries, idempotency key)
        └── repeatable job every minute ─► escalate stuck batches
+API and worker publish batch changes on Redis pub/sub, which /api/events streams to the browser.
 ```
 
 | Piece | Why it is there |
@@ -72,6 +87,7 @@ Worker ── outbox relay (SKIP LOCKED) ──► BullMQ "certiflow-events"  �
 | **BullMQ on Redis (the queue)** | Redis is already needed for caching. BullMQ adds retries with exponential backoff, job ids for de-duplication, repeatable jobs (escalation) and recovery of jobs from a crashed worker. Kafka or RabbitMQ would add an extra system for ~10 messages a second. |
 | **Worker (separate container)** | Issuing 60 certificates and sending 60 messages never blocks Farah's click. Any number of workers can run (`docker compose up --scale worker=3`): every job is idempotent. |
 | **Redis cache for verify** | Bursts of public lookups hit Redis first. On cancel the key is deleted in the same request; a 60 s TTL is the safety net. If Redis is down, verify falls back to the database. |
+| **Live updates (SSE)** | When a batch changes, the API or worker publishes to Redis. `GET /api/events` forwards only the events that person may see. The screen also refreshes every 15 seconds if a message is missed. |
 | **Signed cookie + server checks** | Role, district and current step are checked on every request, not by hiding buttons. Officers of another district get 404 (they cannot even learn the batch exists). |
 | **Pino logs + request id + audit log** | Every response carries `x-request-id`; the same id is in the logs and in the audit record. Refused actions (403/409) are audited too. |
 
