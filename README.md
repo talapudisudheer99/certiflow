@@ -37,7 +37,7 @@ Full list under *Known limits*.
 | D9 | Login | No passwords (brief: "switch between these people"). Server issues a **signed, HttpOnly cookie**; the person is read only from it. | Real login is out of scope; tampering is still impossible. |
 | D10 | WhatsApp | A stand-in service that fails (20%), times out after delivering (10%) and remembers idempotency keys. | Correctness must not depend on the provider. |
 | D11 | Live updates | SSE via Redis pub/sub. Screens also poll every 15 s in case a message is missed. | One-way updates are enough, and Redis is already there. |
-| D12 | Candidate CSV | Columns `full_name, phone, date_of_birth, course_code, score`; 10-digit Indian mobile; age 14-100; score 0-100; course must match the batch; max 5,000 rows. | Catches the real mistakes (wrong phone, wrong course, duplicates) before anything is saved. |
+| D12 | Candidate spreadsheet | Columns `full_name, phone, date_of_birth, course_code, score`; CSV or Excel `.xlsx` (the browser turns the first sheet into CSV). 10-digit Indian mobile; age 14-100; score 0-100; course must match the batch; max 5,000 rows. The server checks every row either way. | Catches the real mistakes (wrong phone, wrong course, duplicates) before anything is saved. |
 | D13 | Officer changes their mind | While the batch is still at their step, an officer can **withdraw their own approval** with a reason. The approval stays in the history and stops counting. After the step has moved on, the next reviewer sends it back, or the state office cancels a certificate. Nothing is deleted. | Mistakes are fixed without erasing the record. |
 
 ## Run it

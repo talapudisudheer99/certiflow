@@ -1,6 +1,7 @@
 import { UploadIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,21 +10,31 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ApiError } from "@/lib/api";
 import { uploadCsv, type RowError } from "@/lib/batches";
 
-/** Moment 1 UI: upload the centre's CSV; if any row is bad, show every error and save nothing. */
+/** Reads the first sheet of an Excel file into the same CSV text the server already checks. */
+async function excelToCsv(file: File) {
+  const book = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
+  const sheet = book.Sheets[book.SheetNames[0]];
+  if (!sheet) return "";
+  return XLSX.utils.sheet_to_csv(sheet, { dateNF: "yyyy-mm-dd" });
+}
+
+/** Moment 1 UI: upload the centre's spreadsheet; if any row is bad, show every error and save nothing. */
 export function CandidateUpload({ batchId, onUploaded }: { batchId: string; onUploaded: () => void }) {
   const [errors, setErrors] = useState<RowError[]>([]);
   const [busy, setBusy] = useState(false);
 
   async function onFile(file: File | undefined) {
     if (!file) return;
-    if (!file.name.toLowerCase().endsWith(".csv")) {
-      setErrors([{ row: 0, field: "file", message: "Please choose a .csv file (Excel: File > Save As > CSV)" }]);
+    const name = file.name.toLowerCase();
+    if (!name.endsWith(".csv") && !name.endsWith(".xlsx")) {
+      setErrors([{ row: 0, field: "file", message: "Please choose a .csv or .xlsx file" }]);
       return;
     }
     setBusy(true);
     setErrors([]);
     try {
-      const { count } = await uploadCsv(batchId, await file.text());
+      const csv = name.endsWith(".xlsx") ? await excelToCsv(file) : await file.text();
+      const { count } = await uploadCsv(batchId, csv);
       toast.success(`${count} candidates saved`);
       onUploaded();
     } catch (e) {
@@ -39,15 +50,15 @@ export function CandidateUpload({ batchId, onUploaded }: { batchId: string; onUp
       <CardHeader>
         <CardTitle>Upload candidates</CardTitle>
         <CardDescription>
-          CSV columns: full_name, phone, date_of_birth (YYYY-MM-DD), course_code, score. If any row is wrong, nothing is
-          saved. Uploading again replaces the list.
+          CSV or Excel columns: full_name, phone, date_of_birth (YYYY-MM-DD), course_code, score. Excel is read in the
+          browser and checked the same way. If any row is wrong, nothing is saved. Uploading again replaces the list.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <label className="flex items-center gap-3">
-          <Input type="file" accept=".csv,text/csv" disabled={busy} onChange={(e) => void onFile(e.target.files?.[0])} />
+          <Input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={busy} onChange={(e) => void onFile(e.target.files?.[0])} />
           <Button variant="outline" disabled tabIndex={-1} aria-hidden>
-            <UploadIcon /> {busy ? "Checking..." : "CSV"}
+            <UploadIcon /> {busy ? "Checking..." : "CSV or Excel"}
           </Button>
         </label>
         {errors.length > 0 && (
