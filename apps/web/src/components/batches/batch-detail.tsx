@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { CandidateUpload } from "@/components/batches/candidate-upload";
 import { CertificatesTable } from "@/components/batches/certificates-table";
 import { HistoryList } from "@/components/batches/history-list";
+import { ProgressStepper } from "@/components/batches/progress-stepper";
 import { ReviewActions } from "@/components/batches/review-actions";
 import { StatusBadge } from "@/components/batches/status-badge";
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,7 @@ export function BatchDetail({ id, user, onBack }: { id: string; user: Person; on
   return (
     <div className="space-y-6">
       <Button variant="ghost" onClick={onBack}><ArrowLeftIcon /> All batches</Button>
+      <ProgressStepper status={batch.status} candidateCount={candidates.length} approvals={approvals} cycle={batch.cycle} />
 
       <Card>
         <CardHeader>
@@ -79,14 +81,19 @@ export function BatchDetail({ id, user, onBack }: { id: string; user: Person; on
             </p>
           )}
           {editable && (
-            <Button disabled={submitting || candidates.length === 0} onClick={() => void submit()}>
-              <SendIcon /> {batch.status === "RETURNED" ? "Resend for approval" : "Send for approval"}
-            </Button>
+            <div className="space-y-2">
+              <Button disabled={submitting || candidates.length === 0} onClick={() => void submit()}>
+                <SendIcon /> {batch.status === "RETURNED" ? "Resend for approval" : "Send for approval"}
+              </Button>
+              <p className="text-sm text-muted-foreground">After sending, the list is locked until an officer sends it back.</p>
+            </div>
           )}
         </CardContent>
       </Card>
 
-      {editable && <CandidateUpload batchId={id} onUploaded={() => void refresh()} />}
+      {editable && (
+        <CandidateUpload batchId={id} courseCode={batch.courseCode} hasCandidates={candidates.length > 0} onUploaded={() => void refresh()} />
+      )}
       {reviewer && reviewer.role === user.role && (
         <ReviewActions
           batchId={id}
@@ -101,16 +108,21 @@ export function BatchDetail({ id, user, onBack }: { id: string; user: Person; on
       {candidates.length > 0 && (
         <Card>
           <CardHeader><CardTitle>Candidates ({candidates.length})</CardTitle></CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
+            {candidates.length > 100 && (
+              <p className="text-sm text-muted-foreground">Showing the first 100 of {candidates.length}</p>
+            )}
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>#</TableHead>
                   <TableHead>Name</TableHead><TableHead>Phone</TableHead><TableHead>Date of birth</TableHead><TableHead>Score</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {candidates.slice(0, 100).map((c) => (
+                {candidates.slice(0, 100).map((c, i) => (
                   <TableRow key={c.id}>
+                    <TableCell>{i + 1}</TableCell>
                     <TableCell>{c.fullName}</TableCell><TableCell>{c.phone}</TableCell>
                     <TableCell>{c.dateOfBirth.slice(0, 10)}</TableCell><TableCell>{c.score}</TableCell>
                   </TableRow>
