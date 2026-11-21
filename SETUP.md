@@ -57,9 +57,10 @@ Tests use real Postgres and Redis (they test concurrency and constraints), in a 
 ```bash
 docker compose up -d postgres redis
 npm run install:all
-cd apps/api && npx prisma generate && cd ../..
 npm test
 ```
+
+`npm test` from the repo root generates the database client, then runs the tests.
 
 ## 4. Develop without Docker for the apps
 
