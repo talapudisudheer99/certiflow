@@ -89,8 +89,7 @@ export function stateRouter(deps: CertDeps) {
 /** Certificate history for anyone who can see the batch, not only the state office. */
 export function certificateHistoryRouter(deps: CertDeps) {
   const router = Router();
-  router.use(requireUser(deps.users));
-  router.get("/certificates/:id/history", route(async (req, res) => {
+  router.get("/certificates/:id/history", requireUser(deps.users), route(async (req, res) => {
     const cert = await prisma.certificate.findUnique({ where: { id: req.params.id } });
     if (!cert) throw notFound("Certificate not found");
     await getVisibleBatch(req.user!, cert.batchId);
