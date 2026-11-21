@@ -50,6 +50,64 @@ docker compose up --build
 
 Tests and the non-Docker setup: see **SETUP.md**. Demo CSVs: `docs/demo/`.
 
+## How to use CertiFlow (roles, pages, steps)
+
+### Who is who
+| Person | Role | Works for | Main job |
+|---|---|---|---|
+| **Anika** | Training centre | Private centre | Creates batches, uploads students, sends for approval, fixes and resends |
+| **Dev, Meera, Kabir** | District officers | Government (North District) | Approve, send back or reject. **Any 2 of the 3 must approve** |
+| **Neha** | Quality team | Government | Extra check for **big batches (50+ students)** |
+| **Farah** | State office | Government | **Final approval**, stuck batches, cancel a certificate, resend a failed WhatsApp |
+| Students | Candidates | - | Never log in. Get the certificate on WhatsApp with a download link |
+| Employers | Public | - | Never log in. Check a certificate number on `/verify` |
+
+- A **batch** = one group of students who finished **one course** (one exact course code, e.g. `ELEC-101`).
+- Approval order: **District (2 officers) → Quality (only if 50+) → State → certificates issued automatically.**
+
+### Pages and what you can do there
+**1. Sign in** (http://localhost:8080)
+- Pick a person, then **Continue**. No password (demo mode).
+- The server gives a signed cookie and checks every action against that person's role, district and the batch's step.
+
+**2. Home page** (changes by role)
+- **Anika:** *New batch* form + *Your batches* (only her centre's).
+- **Officers (Dev, Meera, Kabir, Neha):** *Waiting for you* (batches at your step) + *All batches you can see* (district officers: only their district).
+- **Farah:** *Stuck: waiting too long* + *Waiting for you* + all batches.
+- Click any batch to open it. Lists update by themselves (live updates).
+
+**3. Batch page**
+- Top: name, **status**, course, number of candidates, **cycle** (goes up after a send back), and the reason if sent back.
+- **Anika (Draft or Sent back):**
+  1. **Upload candidates**: CSV or Excel, columns `full_name, phone, date_of_birth (YYYY-MM-DD), course_code, score`.
+     - Any bad row → every error listed with its row number, **nothing saved**.
+     - All rows good → saved (still Draft). Uploading again replaces the list.
+  2. **Send for approval** (or **Resend for approval** after a send back).
+- **Officer at their step:** *Your decision* box: **Approve**, **Send back** or **Reject** (reason required for the last two).
+  - First district approval → "waiting for another officer". Second (different officer) → batch moves on.
+  - **Withdraw my approval**: take back your own approval while the batch is still at your step.
+- **Certificates** (after final approval): number, holder, Valid/Cancelled, WhatsApp status (Pending → Sent / Failed, with tries).
+  - **Farah:** **Cancel** (with a reason) and **Resend** (failed WhatsApp). **History** per certificate.
+- **History** (bottom): every action with who, when and from which state to which. Cannot be edited.
+
+**4. Public verify page** (http://localhost:8080/verify, no login)
+- Type a number like `PSM-2026-000001`, then **Check**.
+- **Valid** (masked name, course, date, centre) · **Cancelled** · **Not found**. No phone or date of birth is ever shown.
+
+**5. WhatsApp stand-in** (http://localhost:4100/v1/messages)
+- Shows the messages "sent" to students, one per certificate. Open a link to **download the PDF**. An edited link is refused.
+
+### One full run, step by step (about 5 minutes)
+1. **Anika:** New batch `Electricians Nov 2026`, course `ELEC-101` → Create.
+2. **Anika:** upload `docs/demo/candidates-60-with-bad-rows.csv` → 4 errors, 0 saved.
+3. **Anika:** upload `docs/demo/candidates-60-valid.csv` → 60 saved → **Send for approval**.
+4. **Dev:** open it from *Waiting for you* → **Approve** → "waiting for another officer".
+5. **Meera:** **Approve** → moves to **Quality review** (60 is 50 or more).
+6. **Neha:** **Approve** → **State review**.
+7. **Farah:** **Approve** → certificates appear; WhatsApp column moves to **Sent** (some take several tries: the stand-in fails on purpose).
+8. Click a certificate number → **Valid** on the verify page.
+9. **Farah:** **Cancel** that certificate with a reason → check again → **Cancelled**.
+
 ## Try it in 3 minutes
 
 Open http://localhost:8080 and sign in as the person named below. These seven batches are already loaded (Hyderabad, course `ELEC-101`).
