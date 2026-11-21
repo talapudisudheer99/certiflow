@@ -3,7 +3,8 @@ import { toast } from "sonner";
 
 import { HistoryList } from "@/components/batches/history-list";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -133,11 +134,6 @@ export function CertificatesTable({ certificates, canManage, onChange }: { certi
                   <a className="text-primary underline-offset-4 hover:underline" href={`/verify/${c.number}`} target="_blank" rel="noreferrer" title="Open the public check">
                     {c.number}
                   </a>
-                  {c.downloadUrl && (
-                    <a className="ml-2 text-muted-foreground underline-offset-4 hover:underline" href={c.downloadUrl} target="_blank" rel="noreferrer" title="Download the certificate PDF (same signed link as on WhatsApp)">
-                      PDF
-                    </a>
-                  )}
                 </TableCell>
                 <TableCell>{c.holderName}</TableCell>
                 <TableCell>
@@ -153,6 +149,11 @@ export function CertificatesTable({ certificates, canManage, onChange }: { certi
                 </TableCell>
                 <TableCell>
                   <div className="flex justify-end gap-2">
+                    {c.downloadUrl && (
+                      <a className={buttonVariants({ size: "sm", variant: "outline" })} href={c.downloadUrl} target="_blank" rel="noreferrer" title="Same signed link the candidate gets on WhatsApp">
+                        <Download className="size-4" /> PDF
+                      </a>
+                    )}
                     <CertificateHistory id={c.id} />
                     {canManage && c.delivery?.status === "FAILED" && <Button size="sm" variant="outline" onClick={() => void resend(c)}>Resend</Button>}
                     {canManage && c.status === "VALID" && <CancelCertificate certificate={c} onDone={onChange} />}
