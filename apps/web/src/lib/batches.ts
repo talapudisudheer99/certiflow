@@ -36,3 +36,4 @@ export const reviewBatch = (id: string, decision: Decision, reason?: string) =>
 export const cancelCertificate = (id: string, reason: string) => api(`/state/certificates/${id}/cancel`, { method: "POST", body: JSON.stringify({ reason }) });
 export const resendCertificate = (id: string) => api(`/state/certificates/${id}/resend`, { method: "POST" });
 export const listStuck = () => api<{ batches: BatchSummary[] }>("/state/stuck");
+export const certificateHistory = (id: string) => api<{ history: AuditEntry[] }>(`/certificates/${id}/history`);

@@ -8,7 +8,7 @@ import { authRouter, type UserStore } from "./auth";
 import { HttpError } from "./lib/http";
 import { prisma } from "./db";
 import { batchesRouter } from "./routes/batches";
-import { publicRouter, stateRouter } from "./routes/certificates";
+import { certificateHistoryRouter, publicRouter, stateRouter } from "./routes/certificates";
 
 // Dependencies are injected so tests can run the app without a real database or Redis.
 export interface Deps {
@@ -60,6 +60,7 @@ export function createApp(deps: Deps) {
     const certDeps = { users: deps.users, redis: f.redis, hmacSecret: f.hmacSecret, publicBaseUrl: f.publicBaseUrl };
     api.use("/batches", batchesRouter(deps.users, { qualityMinSize: f.qualityMinSize }));
     api.use("/state", stateRouter(certDeps));
+    api.use("/", certificateHistoryRouter(certDeps));
     api.use("/", publicRouter(certDeps));
   }
   app.use("/api", api);

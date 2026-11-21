@@ -1,10 +1,45 @@
+import { useState } from "react";
 import { toast } from "sonner";
 
+import { HistoryList } from "@/components/batches/history-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { cancelCertificate, resendCertificate, type Certificate } from "@/lib/batches";
+import { cancelCertificate, certificateHistory, resendCertificate, type AuditEntry, type Certificate } from "@/lib/batches";
+
+function CertificateHistory({ id }: { id: string }) {
+  const [open, setOpen] = useState(false);
+  const [history, setHistory] = useState<AuditEntry[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load(next: boolean) {
+    setOpen(next);
+    if (!next) return;
+    setHistory(null);
+    setError(null);
+    try {
+      setHistory((await certificateHistory(id)).history);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load history");
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => void load(next)}>
+      <Button size="sm" variant="outline" className="ml-2" onClick={() => void load(true)}>History</Button>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Certificate history</DialogTitle>
+        </DialogHeader>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        {!history && !error && <p className="text-sm text-muted-foreground">Loading history...</p>}
+        {history && <HistoryList history={history} />}
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export function CertificatesTable({ certificates, canManage, onChange }: { certificates: Certificate[]; canManage: boolean; onChange: () => void }) {
   if (certificates.length === 0) return null;
@@ -55,6 +90,7 @@ export function CertificatesTable({ certificates, canManage, onChange }: { certi
               <TableRow key={c.id}>
                 <TableCell className="font-mono text-xs">
                   <a className="underline-offset-4 hover:underline" href={`/verify/${c.number}`} target="_blank" rel="noreferrer">{c.number}</a>
+                  <CertificateHistory id={c.id} />
                 </TableCell>
                 <TableCell>{c.holderName}</TableCell>
                 <TableCell>

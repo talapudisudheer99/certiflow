@@ -20,13 +20,13 @@ const issueCfg = { hmacSecret: config.CERT_HMAC_SECRET, storageDir: config.STORA
 const send = httpSender(config.WHATSAPP_URL);
 const sla = { district: config.SLA_DISTRICT_MINUTES, quality: config.SLA_QUALITY_MINUTES, state: config.SLA_STATE_MINUTES };
 
-async function queueDeliveries(certificateIds: string[]) {
+async function queueDeliveries(certificateIds: string[], trace: { requestId?: string; batchId?: string } = {}) {
   if (certificateIds.length === 0) return;
   // jobId = certificate id: the same certificate is never queued twice at the same time.
   await deliveries.addBulk(
     certificateIds.map((id) => ({
       name: "deliver",
-      data: { certificateId: id },
+      data: { certificateId: id, requestId: trace.requestId, batchId: trace.batchId },
       opts: {
         jobId: `deliver-${id}`,
         attempts: config.DELIVERY_MAX_ATTEMPTS,
@@ -43,9 +43,10 @@ const eventsWorker = new Worker(
   async (job) => {
     const log = logger.child({ jobId: job.id, event: job.name });
     if (job.name === "batch.approved") {
+      const traced = log.child({ requestId: job.data.requestId, batchId: job.data.batchId });
       const ids = await issueCertificates(job.data.batchId, issueCfg);
-      log.info({ batchId: job.data.batchId, toDeliver: ids.length }, "certificates issued");
-      await queueDeliveries(ids);
+      traced.info({ toDeliver: ids.length }, "certificates issued");
+      await queueDeliveries(ids, { requestId: job.data.requestId, batchId: job.data.batchId });
     } else if (job.name === "delivery.resend") {
       // A finished job keeps its id for a while; remove it so the resend can be queued.
       await deliveries.remove(`deliver-${job.data.certificateId}`).catch(() => undefined);
@@ -60,7 +61,15 @@ const eventsWorker = new Worker(
 
 const deliveryWorker = new Worker(
   DELIVERY_QUEUE,
-  async (job) => deliverCertificate(job.data.certificateId, issueCfg, send),
+  async (job) => {
+    const log = logger.child({
+      requestId: job.data.requestId,
+      batchId: job.data.batchId,
+      certificateId: job.data.certificateId,
+    });
+    log.info("delivering certificate");
+    return deliverCertificate(job.data.certificateId, issueCfg, send);
+  },
   { connection, concurrency: 10 },
 );
 

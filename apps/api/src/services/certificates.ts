@@ -59,6 +59,17 @@ export async function issueCertificates(batchId: string, cfg: IssueConfig): Prom
       FROM "Certificate" x WHERE x."batchId" = ${batchId}
       ORDER BY x."id"
       ON CONFLICT ("certificateId") DO NOTHING`;
+
+    const issued = await tx.certificate.findMany({ where: { batchId }, select: { id: true } });
+    const already = await tx.auditLog.findMany({
+      where: { entityType: "certificate", action: "CERTIFICATE_ISSUED", entityId: { in: issued.map((c) => c.id) } },
+      select: { entityId: true },
+    });
+    const seen = new Set(already.map((a) => a.entityId));
+    for (const c of issued) {
+      if (seen.has(c.id)) continue;
+      await audit(tx, { actor: null, action: "CERTIFICATE_ISSUED", entityType: "certificate", entityId: c.id, toState: "VALID" });
+    }
   }, { timeout: 60_000 });
 
   const [candidates, certificates] = await Promise.all([
@@ -143,7 +154,13 @@ export async function deliverCertificate(certificateId: string, cfg: IssueConfig
     return "sent";
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    await prisma.delivery.update({ where: { certificateId }, data: { lastError: message.slice(0, 300) } });
+    await prisma.$transaction(async (tx) => {
+      await tx.delivery.update({ where: { certificateId }, data: { lastError: message.slice(0, 300) } });
+      await audit(tx, {
+        actor: null, action: "WHATSAPP_ATTEMPT_FAILED", entityType: "certificate", entityId: certificateId,
+        reason: message.slice(0, 200),
+      });
+    });
     throw err;
   }
 }

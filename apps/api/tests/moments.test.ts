@@ -144,6 +144,20 @@ describe("Moment 3: 60 candidates, exactly one certificate each, flaky WhatsApp"
     expect(delivered.size).toBe(60); // ...yet every person got exactly one message
     expect(await prisma.delivery.count({ where: { certificate: { batchId: id }, status: "SENT" } })).toBe(60);
   });
+
+  it("certificate history lists issued, a failed attempt, then sent", async () => {
+    const id = await submittedBatch(3);
+    for (const who of [people.dev, people.meera, people.farah]) await approve(who, id);
+    const [certId] = await issueCertificates(id, issueCfg);
+    const fail: SendMessage = async () => { throw new Error("provider returned 500"); };
+    await expect(deliverCertificate(certId, issueCfg, fail)).rejects.toThrow(/500/);
+    await deliverCertificate(certId, issueCfg, async () => ({ id: "msg-1" }));
+    const history = await prisma.auditLog.findMany({
+      where: { entityType: "certificate", entityId: certId },
+      orderBy: { createdAt: "asc" },
+    });
+    expect(history.map((h) => h.action)).toEqual(["CERTIFICATE_ISSUED", "WHATSAPP_ATTEMPT_FAILED", "WHATSAPP_SENT"]);
+  });
 });
 
 describe("Moment 4: a cancelled certificate is invalid immediately", () => {

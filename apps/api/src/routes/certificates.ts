@@ -8,6 +8,7 @@ import { audit } from "../lib/audit";
 import { badRequest, forbidden, notFound, route } from "../lib/http";
 import { verifyDownload } from "../lib/signing";
 import { requireRole, requireUser, type UserStore } from "../auth";
+import { getVisibleBatch } from "../services/batches";
 import { cancelCertificate, verifyCertificate } from "../services/verify";
 import { certificatePdf } from "../services/certificates";
 
@@ -82,10 +83,22 @@ export function stateRouter(deps: CertDeps) {
     res.json({ deliveries });
   }));
 
+  return router;
+}
+
+/** Certificate history for anyone who can see the batch, not only the state office. */
+export function certificateHistoryRouter(deps: CertDeps) {
+  const router = Router();
+  router.use(requireUser(deps.users));
   router.get("/certificates/:id/history", route(async (req, res) => {
-    const history = await prisma.auditLog.findMany({ where: { entityType: "certificate", entityId: req.params.id }, orderBy: { createdAt: "asc" } });
+    const cert = await prisma.certificate.findUnique({ where: { id: req.params.id } });
+    if (!cert) throw notFound("Certificate not found");
+    await getVisibleBatch(req.user!, cert.batchId);
+    const history = await prisma.auditLog.findMany({
+      where: { entityType: "certificate", entityId: cert.id },
+      orderBy: { createdAt: "asc" },
+    });
     res.json({ history });
   }));
-
   return router;
 }

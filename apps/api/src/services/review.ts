@@ -86,7 +86,7 @@ export async function reviewBatch(ctx: Ctx, batchId: string, input: ReviewInput,
 
     // Transactional outbox (US-7): the event is saved with the state change, never lost.
     if (next === "APPROVED") {
-      await tx.outboxEvent.create({ data: { type: "batch.approved", payload: { batchId } } });
+      await tx.outboxEvent.create({ data: { type: "batch.approved", payload: { batchId, requestId: ctx.requestId ?? null } } });
     }
     const updated = await tx.batch.findUniqueOrThrow({ where: { id: batchId } });
     return { batch: updated, moved: true, alreadyDecided: false };
