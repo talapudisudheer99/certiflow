@@ -37,6 +37,7 @@ enum Decision {
   APPROVE
   REJECT
   SEND_BACK
+  WITHDRAW
 }
 
 enum CertificateStatus {
@@ -141,7 +142,8 @@ model Approval {
   batch   Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
   officer User  @relation(fields: [officerId], references: [id])
 
-  @@unique([batchId, step, officerId, cycle])
+  // Decision is part of the key so an approval and a later withdrawal can both be kept.
+  @@unique([batchId, step, officerId, cycle, decision])
   @@index([batchId])
 }
 

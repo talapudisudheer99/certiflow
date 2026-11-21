@@ -85,7 +85,15 @@ export function BatchDetail({ id, user, onBack }: { id: string; user: Person; on
       </Card>
 
       {editable && <CandidateUpload batchId={id} onUploaded={() => void refresh()} />}
-      {reviewer && reviewer.role === user.role && <ReviewActions batchId={id} stepLabel={reviewer.label} onDone={() => void refresh()} />}
+      {reviewer && reviewer.role === user.role && (
+        <ReviewActions
+          batchId={id}
+          stepLabel={reviewer.label}
+          canWithdraw={currentApprovals.some((a) => a.decision === "APPROVE" && a.officerId === user.id)
+            && !currentApprovals.some((a) => a.decision === "WITHDRAW" && a.officerId === user.id)}
+          onDone={() => void refresh()}
+        />
+      )}
       <CertificatesTable certificates={certificates} canManage={user.role === "STATE"} onChange={() => void refresh()} />
 
       {candidates.length > 0 && (

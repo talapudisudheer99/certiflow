@@ -4,7 +4,7 @@ import { prisma } from "../db";
 import { route, badRequest } from "../lib/http";
 import { requireUser, type UserStore } from "../auth";
 import { batchVisibilityFilter, createBatch, getVisibleBatch, submitBatch, uploadCandidates } from "../services/batches";
-import { reviewBatch } from "../services/review";
+import { reviewBatch, withdrawApproval } from "../services/review";
 import { ROLE_FOR_STEP } from "../domain/workflow";
 import type { BatchStatus } from "@prisma/client";
 
@@ -81,6 +81,12 @@ export function batchesRouter(users: UserStore, opts: { qualityMinSize: number }
   router.post("/:id/review", route(async (req, res) => {
     const input = parse(reviewSchema, req.body);
     const r = await reviewBatch({ user: req.user!, requestId: res.locals.requestId }, req.params.id, input, opts.qualityMinSize);
+    res.json(r);
+  }));
+
+  router.post("/:id/withdraw", route(async (req, res) => {
+    const { reason } = parse(z.object({ reason: z.string().trim().min(3, "A reason is required to withdraw an approval").max(500) }), req.body);
+    const r = await withdrawApproval({ user: req.user!, requestId: res.locals.requestId }, req.params.id, reason);
     res.json(r);
   }));
 

@@ -2,7 +2,7 @@ import { api } from "@/lib/api";
 
 export type BatchStatus =
   | "DRAFT" | "DISTRICT_REVIEW" | "QUALITY_REVIEW" | "STATE_REVIEW" | "APPROVED" | "ISSUING" | "COMPLETED" | "RETURNED" | "REJECTED";
-export type Decision = "APPROVE" | "REJECT" | "SEND_BACK";
+export type Decision = "APPROVE" | "REJECT" | "SEND_BACK" | "WITHDRAW";
 
 export type BatchSummary = {
   id: string; name: string; courseCode: string; status: BatchStatus; cycle: number; escalatedAt: string | null;
@@ -31,8 +31,10 @@ export const listBatches = (waiting = false) => api<{ batches: BatchSummary[] }>
 export const getBatch = (id: string) => api<BatchDetail>(`/batches/${id}`);
 export const uploadCsv = (id: string, csv: string) => api<{ count: number }>(`/batches/${id}/candidates`, { method: "POST", body: JSON.stringify({ csv }) });
 export const submitBatch = (id: string) => api(`/batches/${id}/submit`, { method: "POST" });
-export const reviewBatch = (id: string, decision: Decision, reason?: string) =>
+export const reviewBatch = (id: string, decision: Exclude<Decision, "WITHDRAW">, reason?: string) =>
   api<{ moved: boolean; alreadyDecided: boolean }>(`/batches/${id}/review`, { method: "POST", body: JSON.stringify({ decision, reason }) });
+export const withdrawApproval = (id: string, reason: string) =>
+  api(`/batches/${id}/withdraw`, { method: "POST", body: JSON.stringify({ reason }) });
 export const cancelCertificate = (id: string, reason: string) => api(`/state/certificates/${id}/cancel`, { method: "POST", body: JSON.stringify({ reason }) });
 export const resendCertificate = (id: string) => api(`/state/certificates/${id}/resend`, { method: "POST" });
 export const listStuck = () => api<{ batches: BatchSummary[] }>("/state/stuck");

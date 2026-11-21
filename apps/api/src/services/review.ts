@@ -38,8 +38,8 @@ export async function reviewBatch(ctx: Ctx, batchId: string, input: ReviewInput,
     }
 
     // Same officer, same step, same cycle: their decision is already recorded. No-op.
-    const mine = await tx.approval.findUnique({
-      where: { batchId_step_officerId_cycle: { batchId, step, officerId: ctx.user.id, cycle: batch.cycle } },
+    const mine = await tx.approval.findFirst({
+      where: { batchId, step, officerId: ctx.user.id, cycle: batch.cycle, decision: "APPROVE" },
     });
     if (mine) return { batch, moved: false, alreadyDecided: true };
 
@@ -55,9 +55,11 @@ export async function reviewBatch(ctx: Ctx, batchId: string, input: ReviewInput,
     if (input.decision === "REJECT") next = "REJECTED";
     else if (input.decision === "SEND_BACK") next = "RETURNED";
     else {
-      const approvals = await tx.approval.count({
-        where: { batchId, step, cycle: batch.cycle, decision: "APPROVE" },
-      });
+      const [approves, withdrawn] = await Promise.all([
+        tx.approval.count({ where: { batchId, step, cycle: batch.cycle, decision: "APPROVE" } }),
+        tx.approval.count({ where: { batchId, step, cycle: batch.cycle, decision: "WITHDRAW" } }),
+      ]);
+      const approvals = approves - withdrawn;
       if (approvals >= APPROVALS_NEEDED[step]) {
         const size = await tx.candidate.count({ where: { batchId } });
         next = statusAfterStep(step, size, qualityMinSize);
@@ -90,5 +92,40 @@ export async function reviewBatch(ctx: Ctx, batchId: string, input: ReviewInput,
     }
     const updated = await tx.batch.findUniqueOrThrow({ where: { id: batchId } });
     return { batch: updated, moved: true, alreadyDecided: false };
+  });
+}
+
+/**
+ * An officer takes back their own approval while the batch is still at their step (decision D13).
+ * The approval row is kept. A withdrawal row means it no longer counts.
+ */
+export async function withdrawApproval(ctx: Ctx, batchId: string, reason: string) {
+  const text = reason.trim();
+  if (text.length < 3) throw badRequest("A reason is required to withdraw an approval");
+  await getVisibleBatch(ctx.user, batchId);
+
+  return prisma.$transaction(async (tx) => {
+    const batch = await lockBatch(tx, batchId);
+    const step = stepOf(batch.status);
+    if (!step || ROLE_FOR_STEP[step] !== ctx.user.role) {
+      throw conflict("The batch has moved on; ask the next reviewer to send it back");
+    }
+    const mine = await tx.approval.findFirst({
+      where: { batchId, step, officerId: ctx.user.id, cycle: batch.cycle, decision: "APPROVE" },
+    });
+    if (!mine) throw conflict("You have not approved this batch at this step");
+    const already = await tx.approval.findFirst({
+      where: { batchId, step, officerId: ctx.user.id, cycle: batch.cycle, decision: "WITHDRAW" },
+    });
+    if (already) return { batch, withdrawn: false };
+
+    await tx.approval.create({
+      data: { batchId, step, officerId: ctx.user.id, decision: "WITHDRAW", reason: text, cycle: batch.cycle },
+    });
+    await audit(tx, {
+      actor: ctx.user, action: "REVIEW_WITHDRAW", entityType: "batch", entityId: batchId,
+      fromState: batch.status, reason: text, requestId: ctx.requestId,
+    });
+    return { batch, withdrawn: true };
   });
 }

@@ -3,7 +3,7 @@ import { prisma } from "../src/db";
 import { createCacheRedis } from "../src/redis";
 import { HttpError } from "../src/lib/http";
 import { createBatch, submitBatch, uploadCandidates } from "../src/services/batches";
-import { reviewBatch } from "../src/services/review";
+import { reviewBatch, withdrawApproval } from "../src/services/review";
 import { deliverCertificate, issueCertificates, type SendMessage } from "../src/services/certificates";
 import { cancelCertificate, verifyCertificate } from "../src/services/verify";
 import { escalateStuckBatches } from "../src/services/escalation";
@@ -223,6 +223,24 @@ describe("Moment 6: send back, fix, resend (decision D4: earlier approvals are c
     const id = await submittedBatch(3);
     await reviewBatch({ user: await people.dev() }, id, { decision: "REJECT", reason: "Not our centre" }, QUALITY_MIN);
     await expectHttp(submitBatch({ user: await people.anika() }, id), 409);
+  });
+});
+
+describe("D13: an officer withdraws their own approval", () => {
+  it("withdraw then another officer approves does not move the batch", async () => {
+    const id = await submittedBatch(3);
+    await approve(people.dev, id);
+    await withdrawApproval({ user: await people.dev() }, id, "I approved the wrong batch");
+    await approve(people.meera, id);
+    expect(await statusOf(id)).toBe("DISTRICT_REVIEW");
+  });
+
+  it("withdraw after the batch moved is refused", async () => {
+    const id = await submittedBatch(3);
+    await approve(people.dev, id);
+    await approve(people.meera, id);
+    expect(await statusOf(id)).toBe("STATE_REVIEW");
+    await expectHttp(withdrawApproval({ user: await people.dev() }, id, "Too late"), 409);
   });
 });
 

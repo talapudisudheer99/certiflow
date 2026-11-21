@@ -38,6 +38,7 @@ Full list under *Known limits*.
 | D10 | WhatsApp | A stand-in service that fails (20%), times out after delivering (10%) and remembers idempotency keys. | Correctness must not depend on the provider. |
 | D11 | Live updates | Polling every 3 s today; SSE via Redis pub/sub is the planned upgrade. | Time-boxed; correctness first. |
 | D12 | Candidate CSV | Columns `full_name, phone, date_of_birth, course_code, score`; 10-digit Indian mobile; age 14-100; score 0-100; course must match the batch; max 5,000 rows. | Catches the real mistakes (wrong phone, wrong course, duplicates) before anything is saved. |
+| D13 | Officer changes their mind | While the batch is still at their step, an officer can **withdraw their own approval** with a reason. The approval stays in the history and stops counting. After the step has moved on, the next reviewer sends it back, or the state office cancels a certificate. Nothing is deleted. | Mistakes are fixed without erasing the record. |
 
 ## Run it
 

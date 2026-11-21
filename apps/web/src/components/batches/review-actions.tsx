@@ -4,14 +4,33 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { reviewBatch, type Decision } from "@/lib/batches";
+import { reviewBatch, withdrawApproval, type Decision } from "@/lib/batches";
 
 /** Approve, send back or reject. The server decides if this person may act; buttons are only a convenience. */
-export function ReviewActions({ batchId, stepLabel, onDone }: { batchId: string; stepLabel: string; onDone: () => void }) {
+export function ReviewActions({ batchId, stepLabel, canWithdraw, onDone }: { batchId: string; stepLabel: string; canWithdraw: boolean; onDone: () => void }) {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState<Decision | null>(null);
 
-  async function act(decision: Decision) {
+  async function withdraw() {
+    if (reason.trim().length < 3) {
+      toast.error("Write a reason first");
+      return;
+    }
+    setBusy("WITHDRAW");
+    try {
+      await withdrawApproval(batchId, reason.trim());
+      toast.success("Your approval was withdrawn");
+      setReason("");
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not withdraw");
+      onDone();
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function act(decision: Exclude<Decision, "WITHDRAW">) {
     if (decision !== "APPROVE" && reason.trim().length < 3) {
       toast.error("Write a reason first");
       return;
@@ -43,6 +62,11 @@ export function ReviewActions({ batchId, stepLabel, onDone }: { batchId: string;
           <Button disabled={busy !== null} onClick={() => void act("APPROVE")}>{busy === "APPROVE" ? "Approving..." : "Approve"}</Button>
           <Button variant="outline" disabled={busy !== null} onClick={() => void act("SEND_BACK")}>Send back</Button>
           <Button variant="destructive" disabled={busy !== null} onClick={() => void act("REJECT")}>Reject</Button>
+          {canWithdraw && (
+            <Button variant="outline" disabled={busy !== null} onClick={() => void withdraw()}>
+              {busy === "WITHDRAW" ? "Withdrawing..." : "Withdraw my approval"}
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
