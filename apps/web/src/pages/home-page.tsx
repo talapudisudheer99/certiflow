@@ -11,10 +11,12 @@ import type { Person } from "@/lib/people";
 /** One screen per role: what is waiting for me, everything I can see, and (state office) what is stuck. */
 export function HomePage({ user }: { user: Person }) {
   const [openId, setOpenId] = useState<string | null>(null);
-  const all = usePoll(() => listBatches(false), 15000);
-  const waiting = usePoll(() => (user.role === "CENTRE" ? Promise.resolve({ batches: [] }) : listBatches(true)), 15000);
-  const stuck = usePoll(() => (user.role === "STATE" ? listStuck() : Promise.resolve({ batches: [] })), 15000);
+  const listsVisible = openId === null; // pause the home lists while a batch page is open
+  const all = usePoll(() => listBatches(false), 15000, listsVisible);
+  const waiting = usePoll(() => (user.role === "CENTRE" ? Promise.resolve({ batches: [] }) : listBatches(true)), 15000, listsVisible);
+  const stuck = usePoll(() => (user.role === "STATE" ? listStuck() : Promise.resolve({ batches: [] })), 15000, listsVisible);
   useLiveEvents(() => {
+    if (!listsVisible) return;
     void all.refresh();
     void waiting.refresh();
     void stuck.refresh();
@@ -23,7 +25,7 @@ export function HomePage({ user }: { user: Person }) {
   if (openId) {
     return (
       <main className="mx-auto max-w-5xl p-4">
-        <BatchDetail id={openId} user={user} onBack={() => { setOpenId(null); void all.refresh(); }} />
+        <BatchDetail id={openId} user={user} onBack={() => setOpenId(null)} />
       </main>
     );
   }
