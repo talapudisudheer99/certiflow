@@ -5,7 +5,7 @@ import { route, badRequest } from "../lib/http";
 import { requireUser, type UserStore } from "../auth";
 import { batchVisibilityFilter, createBatch, getVisibleBatch, submitBatch, uploadCandidates } from "../services/batches";
 import { reviewBatch, withdrawApproval } from "../services/review";
-import { ROLE_FOR_STEP } from "../domain/workflow";
+import { ROLE_FOR_STEP, stepOf } from "../domain/workflow";
 import type { BatchStatus } from "@prisma/client";
 
 const createSchema = z.object({
@@ -41,10 +41,22 @@ export function batchesRouter(users: UserStore, opts: { qualityMinSize: number }
     const batches = await prisma.batch.findMany({
       where: { ...batchVisibilityFilter(user), ...(waitingStatus ? { status: waitingStatus } : {}) },
       orderBy: { updatedAt: "desc" },
-      include: { centre: { select: { name: true } }, _count: { select: { candidates: true, certificates: true } } },
+      include: {
+        centre: { select: { name: true } },
+        _count: { select: { candidates: true, certificates: true } },
+        approvals: { select: { decision: true, cycle: true, step: true } },
+      },
       take: 200,
     });
-    res.json({ batches });
+    res.json({
+      batches: batches.map((batch) => {
+        const step = stepOf(batch.status);
+        const rows = step ? batch.approvals.filter((a) => a.step === step && a.cycle === batch.cycle) : [];
+        const approvalsThisStep = rows.filter((a) => a.decision === "APPROVE").length - rows.filter((a) => a.decision === "WITHDRAW").length;
+        const { approvals: _approvals, ...rest } = batch;
+        return { ...rest, approvalsThisStep: Math.max(0, approvalsThisStep) };
+      }),
+    });
   }));
 
   router.post("/", route(async (req, res) => {

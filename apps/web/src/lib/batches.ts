@@ -8,6 +8,7 @@ export type BatchSummary = {
   id: string; name: string; courseCode: string; status: BatchStatus; cycle: number; escalatedAt: string | null;
   stepEnteredAt: string; updatedAt: string; returnReason: string | null;
   centre: { name: string }; _count: { candidates: number; certificates: number };
+  approvalsThisStep?: number;
 };
 export type Candidate = { id: string; fullName: string; phone: string; dateOfBirth: string; courseCode: string; score: number };
 export type Approval = { id: string; step: string; decision: Decision; reason: string | null; cycle: number; createdAt: string; officerId: string; officer: { name: string } };

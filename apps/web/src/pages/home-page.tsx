@@ -34,14 +34,14 @@ export function HomePage({ user }: { user: Person }) {
       {user.role === "CENTRE" && <CreateBatchForm onCreated={(id) => setOpenId(id)} />}
       {user.role === "STATE" && (stuck.data?.batches.length ?? 0) > 0 && (
         <BatchList title="Stuck: waiting too long" description="Escalated automatically after the time limit for their step."
-          batches={stuck.data?.batches ?? null} emptyText="" onOpen={setOpenId} />
+          batches={stuck.data?.batches ?? null} emptyText="" role={user.role} onOpen={setOpenId} />
       )}
       {user.role !== "CENTRE" && (
         <BatchList title="Waiting for you" description="Batches at your step." batches={waiting.data?.batches ?? null}
-          error={waiting.error} emptyText="Nothing is waiting for you right now." onOpen={setOpenId} />
+          error={waiting.error} emptyText="Nothing is waiting for you right now." role={user.role} onOpen={setOpenId} />
       )}
       <BatchList title={user.role === "CENTRE" ? "Your batches" : "All batches you can see"} batches={all.data?.batches ?? null}
-        error={all.error} emptyText={user.role === "CENTRE" ? "No batches yet. Create one above." : "No batches yet."} onOpen={setOpenId} />
+        error={all.error} emptyText={user.role === "CENTRE" ? "No batches yet. Create one above." : "No batches yet."} role={user.role} onOpen={setOpenId} />
     </main>
   );
 }
