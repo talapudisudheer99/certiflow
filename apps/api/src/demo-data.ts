@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
+import { logger } from "./logger";
 import { issueCertificates } from "./services/certificates";
 
 /** Fixed ids make seeding idempotent: running it twice changes nothing (US-1). */
@@ -47,7 +48,7 @@ export async function seedDemo(prisma: PrismaClient) {
 
   await seedFlows(prisma);
   const ready = await prisma.certificate.findMany({ where: { batchId: COMPLETED_ID }, orderBy: { number: "asc" }, select: { number: true } });
-  console.log("Sample certificates ready to verify:", ready.map((c) => c.number).join(", ") || "(none yet)");
+  logger.info({ numbers: ready.map((c) => c.number) }, "Sample certificates ready to verify");
 }
 
 const COURSE = "ELEC-101";
